@@ -6,7 +6,6 @@ class LogModel:
         self.logText = logText
 
     def toString(self):
-
         textList = ''.join(self.logText).split('\u26E7')
         buildString = ''
         for i in range(len(self.logHeader)):

