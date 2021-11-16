@@ -9,11 +9,8 @@
 import base64
 import socket
 import threading
-import time
-from queue import Queue
-
-# Third Party Modules
 import json
+from queue import Queue
 
 
 class Listener:
@@ -32,6 +29,11 @@ class Listener:
 
         self.create_workers()
         self.create_jobs()
+
+    # ****************** THREAD POOL ******************************************************************
+
+    # Thread pool pattern makes it easy to observe and manage threads
+    # Reduces the costs occur when creating and deleting threads
 
     def create_workers(self):
         for _ in range(self.NUMBER_OF_THREADS):
@@ -54,6 +56,8 @@ class Listener:
         for x in self.JOB_NUMBER:
             self.queue.put(x)
         self.queue.join()
+
+    # ****************** THREAD POOL ******************************************************************
 
     def create_socket(self, ip, port):
         try:
