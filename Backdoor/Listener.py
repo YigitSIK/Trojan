@@ -18,7 +18,7 @@ class Listener:
     NUMBER_OF_THREADS = 2
     JOB_NUMBER = [1, 2]
     queue = Queue()
-    Ip = "192.168.79.128"
+    Ip = "127.0.0.1"
     Port = 4444
     target = None
     target_ip = ""
@@ -110,7 +110,7 @@ class Listener:
 
                 try:
                     # Check if connection is still available
-                    connection.send(json.dumps("AreYouAwake?").encode())
+                    connection.send(json.dumps(["AreYouAwake?"]).encode())
                     connection.recv(1024)
                 except:
                     # If connection is not available anymore, clear from list
@@ -206,13 +206,14 @@ class Listener:
     # will be sent back to us
     def connect_to_the_target(self):
 
-        result = ""
 
         while True:
 
             # Input commands from terminal
             command = input("{}>> ".format(self.target_ip[0]))
             command = command.split()
+
+            result = ""
 
             if len(command) > 0:
 
