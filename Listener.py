@@ -15,11 +15,13 @@ import time
 import random
 from queue import Queue
 
+import select
+
 
 class Listener:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 9]
-    IP = "0.0.0.0" #0.0.0.0
+    IP = "127.0.0.1"  # 0.0.0.0
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
@@ -94,6 +96,7 @@ class Listener:
 
             try:
                 new_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                new_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             except Exception as msg:
                 print("Socket Creation Error " + str(msg))
             try:
@@ -115,7 +118,7 @@ class Listener:
                         # Wait for first connection. This is a blocking code
                         response = self.socket_list[i].accept()
                         # This prevents connection from timeout
-                        self.socket_list[i].setblocking(True)
+                        self.socket_list[i].setblocking(False)
                         self.connection_list.append(response[0])
                         self.address_list.append(response[1])
                         print("[+] Got a connection" + str(response[1]))
@@ -137,9 +140,17 @@ class Listener:
             for i, connection in enumerate(self.connection_list):
 
                 try:
+                    result = ""
                     # Check if connection is still available
                     connection.send(json.dumps(["AreYouAwake?"]).encode())
-                    connection.recv(1024)
+                    ready = select.select([connection], [], [], 5)
+                    if ready[0]:
+                        result += self.target.recv(1024).decode()
+                    else:
+                        print("Client did not answer, clearing {} from connection list".format(self.address_list[i]))
+                        del self.connection_list[i]
+                        del self.address_list[i]
+                        return -1
                 except:
                     # If connection is not available anymore, clear from list
                     del self.connection_list[i]
@@ -168,7 +179,11 @@ class Listener:
         json_data = ""
         while True:
             try:
-                json_data += self.target.recv(1024).decode()
+                ready = select.select([self.target], [], [], 5)
+                if ready[0]:
+                    json_data += self.target.recv(1024).decode()
+                else:
+                    break
                 return json.loads(json_data)
             except ValueError:
                 continue
@@ -259,7 +274,9 @@ class Listener:
 
                 # List all available connections
                 elif command[0] == "list":
-                    self.list_connections()
+                    result = self.list_connections()
+                    if result is -1:
+                        break
                     continue
 
                 # Select from available connections
