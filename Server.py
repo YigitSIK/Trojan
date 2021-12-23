@@ -19,7 +19,7 @@ import select
 
 
 class Listener:
-    NUMBER_OF_THREADS = 6
+    NUMBER_OF_THREADS = 7
     JOB_NUMBER = [0, 9]
     IP = "0.0.0.0"  # 0.0.0.0
     NUMBER_OF_PORTS = 5
@@ -34,7 +34,9 @@ class Listener:
     address_list = []
     is_date_changed = False
 
-    queue = Queue()
+    task_queue = Queue()
+    socket_queue = Queue()
+    receive_queue = Queue()
 
     # Create and listen a tcp server socket with given ip and port values.
     def __init__(self):
@@ -55,7 +57,7 @@ class Listener:
 
     def work(self):
         while True:
-            x = self.queue.get()
+            x = self.task_queue.get()
 
             if x == 0:
                 self.randomize_ports()
@@ -66,12 +68,12 @@ class Listener:
             elif x == 9:
                 self.terminal()
 
-            self.queue.task_done()
+            self.task_queue.task_done()
 
     def create_jobs(self):
         for x in self.JOB_NUMBER:
-            self.queue.put(x)
-        self.queue.join()
+            self.task_queue.put(x)
+        self.task_queue.join()
 
     # ****************** THREAD POOL ******************************************************************
 
@@ -86,7 +88,7 @@ class Listener:
         for i in range(5):
             self.port_list.append(round(self.MIN_PORT_VALUE + step * i + step * seed))
 
-        self.queue.put(1)
+        self.task_queue.put(1)
 
     def create_socket(self):
 
@@ -107,23 +109,29 @@ class Listener:
             except Exception as msg:
                 print("Binding Error: " + str(msg))
 
-            self.queue.put(2)
+            self.task_queue.put(2)
+
+        for i in range(len(self.socket_list)):
+            self.socket_queue.put(i)
+            self.receive_queue.put(i)
 
     def listen(self):
 
+        i = self.socket_queue.get()
+
         while True:
             try:
-                for i, socket_element in enumerate(self.socket_list):
-                    if self.socket_list is not None:
-                        # Wait for first connection. This is a blocking code
-                        response = self.socket_list[i].accept()
-                        # This prevents connection from timeout
-                        self.socket_list[i].setblocking(False)
-                        self.connection_list.append(response[0])
-                        self.address_list.append(response[1])
-                        print("[+] Got a connection" + str(response[1]))
-                    else:
-                        break
+                if self.socket_list is not None:
+                    # Wait for first connection. This is a blocking code
+                    response = self.socket_list[i].accept()
+                    # This prevents connection from timeout
+                    self.socket_list[i].setblocking(True)
+                    self.connection_list.append(response[0])
+                    self.address_list.append(response[1])
+                    print("[+] Got a connection" + str(response[1]))
+
+                else:
+                    break
             except Exception as msg:
                 print("Listener Error " + str(msg))
                 time.sleep(1)

