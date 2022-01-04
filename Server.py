@@ -158,12 +158,15 @@ class Listener:
             for i, connection in enumerate(self.connection_list):
 
                 try:
-                    result = ""
                     # Check if connection is still available
-                    connection.send(json.dumps(["AreYouAwake?"]).encode())
+                    json_data = json.dumps(["AreYouAwake?"]).encode()
+                    cipher_bytes = self.cipher_encrypt.encrypt(json_data)
+                    encrypted_text = base64.b64encode(cipher_bytes)
+                    msg = struct.pack('>I', len(encrypted_text)) + encrypted_text
+                    connection.send(msg)
                     ready = select.select([connection], [], [], 2)
                     if ready[0]:
-                        result += connection.recv(1024).decode()
+                        connection.recv(1024).decode()
                     else:
                         print("Client did not answer, clearing {} from connection list".format(self.address_list[i]))
                         del self.connection_list[i]

