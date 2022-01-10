@@ -15,9 +15,6 @@ import requests
 import socket
 import sys
 import smtplib
-import base64
-import json
-import shutil
 
 
 # User Defined Modules

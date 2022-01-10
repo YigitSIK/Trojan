@@ -344,6 +344,8 @@ class Listener:
             
                 """
 
+                print(help_text)
+
             # Select from available connections
             elif command[0] == "select":
                 try:
